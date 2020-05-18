@@ -21,8 +21,8 @@ function [OrthoDir] = my_SIR(NumIn,NumPoints,SampleIn,SampleQoi)
 
 
 %% SIR begins
-H = 3;% slice number
-num = NumPoints/H;% slice size
+H = 5;% slice number
+num = floor(NumPoints/H);% slice size
 m = mean(SampleIn,2);% sample mean
 
 Sigma = zeros(NumIn,NumIn);
