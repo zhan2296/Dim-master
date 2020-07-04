@@ -1,4 +1,4 @@
-function [M, A_h, A_l] = mainNew()
+function [M, A_h, A_l] = mainNew_pde()
 %% Pre-processing
 clc; close all;
 rng('default')
@@ -10,13 +10,13 @@ set(0,'defaulttextinterpreter','latex')
 global ModelInfo
 
 %% Setup
-N_L = 100;
-N_H_start = 5;
+N_L = 300;
+N_H_start = 50;
 N_H = N_H_start;
 D = 5;
 
 I = 1;
-I_max = 5;
+I_max = 4;
 O = cell(1,I_max+1);
 count = 0;
 points_add = zeros(1,I_max);
@@ -24,7 +24,7 @@ process_error = zeros(1,I_max);
 
 % lb = zeros(1,D);
 % ub = ones(1,D);
-jitter = 1e-7;
+jitter = 1e-10;
 noise_L = 0;
 noise_H = 0;
 ModelInfo.jitter=jitter;
@@ -32,26 +32,40 @@ ModelInfo.jitter=jitter;
 %% Generate Data
 % ModelInfo.X_H = bsxfun(@plus,lb,bsxfun(@times,   lhsdesign(N_H,D)    ,(ub-lb)));
 ModelInfo.X_H = randn(N_H_start, D);
-ModelInfo.y_H = f_H(ModelInfo.X_H);
-ModelInfo.y_H = ModelInfo.y_H + noise_H*randn(N_H,1);
+ModelInfo.y_H = zeros(N_H_start, 1);
+for i = 1:N_H_start
+    ModelInfo.y_H(i) = kdv_h(6,ModelInfo.X_H(i,:));
+end
 
 
 % ModelInfo.X_L = bsxfun(@plus,lb,bsxfun(@times,   lhsdesign(N_L,D)    ,(ub-lb)));
 ModelInfo.X_L = randn(N_L, D);
-ModelInfo.y_L = f_L(ModelInfo.X_L);
-ModelInfo.y_L = ModelInfo.y_L + noise_L*randn(N_L,1);
-f_H_pool = f_H(ModelInfo.X_L);
+ModelInfo.y_L = zeros(N_L, 1);
+
+for i = 1:N_L
+    ModelInfo.y_L(i) = kdv_l(6, ModelInfo.X_L(i,:));
+end
+
+f_H_pool = zeros(N_L, 1);
+for i = 1: N_L
+    f_H_pool(i) = kdv_h(6, ModelInfo.X_L(i,:));
+end
 
 n_test = 50;
 X_T = randn(n_test, D);
-y_exact = f_H(X_T);
+y_exact = zeros(n_test, 1);
+for i = 1:n_test
+    y_exact(i) = kdv_h(6, X_T(i,:));
+end
 
-n_SIR = 1000;
+n_SIR = 500;
 X_SIR = randn(n_SIR, D);
 
 X_ORIGIN = X_SIR;
-low_origin = f_L(X_SIR);
-
+low_origin = zeros(n_SIR, 1);
+for i = 1:n_SIR
+    low_origin(i) = kdv_l(6, X_SIR(i,:));
+end
 %% First rotation
 A1 = my_SIR(5, N_L, ModelInfo.X_L', ModelInfo.y_L);
 O{count+1} = A1;
@@ -81,7 +95,7 @@ options = optimoptions('fminunc','GradObj','on','Display','iter',...
 %% Active Learning for adding new f_H
 relative_error = 1;
 N_iteration = 1;
-while  N_iteration < 10
+while  N_iteration < 5
 
     index = find(var_f == max(var_f),1,'first');
     X_H_new = ModelInfo.X_L(index,:);
@@ -112,7 +126,7 @@ end
 [mean_f_SIR, ~] = predictor_f_H(X_SIR);
 
 %% Dimension reduction
-A = my_SIR(5,1000,X_SIR',mean_f_SIR);
+A = my_SIR(5,n_SIR,X_SIR',mean_f_SIR);
 O{count+1} = A;
 count = count + 1;
 A = A(:,1:5);
@@ -163,7 +177,7 @@ while I <= I_max
         
         relative_error = 1;
         N_iteration = 1;
-        while  N_iteration < 10
+        while  N_iteration < 5
 
             index = find(var_f == max(var_f),1,'first');
             X_H_new = ModelInfo.X_L(index,:);
@@ -190,7 +204,7 @@ while I <= I_max
         end
         
         [mean_f_SIR, ~] = predictor_f_H(X_SIR);
-        A = my_SIR(5,1000,X_SIR',mean_f_SIR);
+        A = my_SIR(5,n_SIR,X_SIR',mean_f_SIR);
         O{count+1} = A;
         count = count + 1;
         A = A(:,1:5);
@@ -212,37 +226,43 @@ while I <= I_max
     end   
 end
 
-Sample_h = mean_f_SIR - 0.7*low_origin ;
-A_h = my_SIR(5, 1000, X_ORIGIN', Sample_h);
-A_l = my_SIR(5, 1000, X_ORIGIN', low_origin);
-
+ 
 M = O{1};
 for i = 2:length(O)
     M = M*O{i};
 end
 
 %% New Generate
-N_L = 100;
-N_H = 20;
+N_L = 300;
+N_H = 50;
 D = 5;
 
-jitter = 1e-7;
+jitter = 1e-13;
 ModelInfo.jitter=jitter;
 
 %% Generate Data
 % ModelInfo.X_H = bsxfun(@plus,lb,bsxfun(@times,   lhsdesign(N_H,D)    ,(ub-lb)));
 ModelInfo.X_H = randn(N_H, D);
-ModelInfo.y_H = f_H(ModelInfo.X_H);
+ModelInfo.y_H = zeros(N_H, 1);
+for i =1:N_H
+    ModelInfo.y_H(i) = kdv_h(6, ModelInfo.X_H(i,:));
+end
 XH = ModelInfo.X_H;
 
 % ModelInfo.X_L = bsxfun(@plus,lb,bsxfun(@times,   lhsdesign(N_L,D)    ,(ub-lb)));
 ModelInfo.X_L = randn(N_L, D);
-ModelInfo.y_L = f_L(ModelInfo.X_L);
+ModelInfo.y_L = zeros(N_L, 1);
+for i = 1:N_L
+    ModelInfo.y_L(i) = kdv_l(6, ModelInfo.X_L(i,:));
+end
 XL = ModelInfo.X_L;
 
-n_test = 30;
+n_test = 50;
 X_T = randn(n_test, D);
-y_exact = f_H(X_T);
+y_exact = zeros(n_test,1);
+for i = 1:n_test
+    y_exact(i) = kdv_h(6, X_T(i,:));
+end
 XT = X_T;
 
 %% Reduced GP with M
@@ -259,22 +279,8 @@ options = optimoptions('fminunc','GradObj','on','Display','iter',...
 [ModelInfo.hyp,~,~,~,~,~] = fminunc(@likelihood,hyp,options);
 [f_M, ~] = predictor_f_H(X_T);
 
-%% Reduced GP with AL AND AH
-
-K = [A_h(:,1), A_l(:,1)];
-ModelInfo.X_H = XH * K;
-ModelInfo.X_L = XL * K;
-X_T = XT * K;
-
-hyp = [log(ones(1, 2*2+2)) 1 -4 -4];
-options = optimoptions('fminunc','GradObj','on','Display','iter',...
-    'Algorithm','trust-region','Diagnostics','on','DerivativeCheck','on',...
-    'FinDiffType','central');
-[ModelInfo.hyp,~,~,~,~,~] = fminunc(@likelihood,hyp,options);
-[f_K, ~] = predictor_f_H(X_T);
 
 error1 = norm(f_M - y_exact,2)/norm(y_exact,2)
-error2 = norm(f_K - y_exact,2)/norm(y_exact,2)
 
 
 %% Post-processing
