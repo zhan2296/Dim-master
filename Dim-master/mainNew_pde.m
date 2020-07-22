@@ -23,7 +23,7 @@ points_add = zeros(1,I_max);
 process_error = zeros(1,I_max);
 
 % lb = zeros(1,D);
-% ub = ones(1,D);
+% ub = ones(1,D); 
 jitter = 1e-10;
 noise_L = 0;
 noise_H = 0;
@@ -34,7 +34,8 @@ ModelInfo.jitter=jitter;
 ModelInfo.X_H = randn(N_H_start, D);
 ModelInfo.y_H = zeros(N_H_start, 1);
 for i = 1:N_H_start
-    ModelInfo.y_H(i) = kdv_h(6,ModelInfo.X_H(i,:));
+%    ModelInfo.y_H(i) = kdv_h(6,ModelInfo.X_H(i,:));
+    ModelInfo.y_H(i) = elliptic2(6,ModelInfo.X_H(i,:));
 end
 
 
@@ -43,19 +44,22 @@ ModelInfo.X_L = randn(N_L, D);
 ModelInfo.y_L = zeros(N_L, 1);
 
 for i = 1:N_L
-    ModelInfo.y_L(i) = kdv_l(6, ModelInfo.X_L(i,:));
+%    ModelInfo.y_L(i) = kdv_l(6, ModelInfo.X_L(i,:));
+    ModelInfo.y_L(i) = elliptic1(6, ModelInfo.X_L(i,:));
 end
 
 f_H_pool = zeros(N_L, 1);
 for i = 1: N_L
-    f_H_pool(i) = kdv_h(6, ModelInfo.X_L(i,:));
+%    f_H_pool(i) = kdv_h(6, ModelInfo.X_L(i,:));
+    f_H_pool(i) = elliptic2(6, ModelInfo.X_L(i,:));
 end
 
 n_test = 50;
 X_T = randn(n_test, D);
 y_exact = zeros(n_test, 1);
 for i = 1:n_test
-    y_exact(i) = kdv_h(6, X_T(i,:));
+%    y_exact(i) = kdv_h(6, X_T(i,:));
+    y_exact(i) = elliptic2(6, X_T(i,:));
 end
 
 n_SIR = 500;
@@ -64,8 +68,10 @@ X_SIR = randn(n_SIR, D);
 X_ORIGIN = X_SIR;
 low_origin = zeros(n_SIR, 1);
 for i = 1:n_SIR
-    low_origin(i) = kdv_l(6, X_SIR(i,:));
+%    low_origin(i) = kdv_l(6, X_SIR(i,:));
+    low_origin(i) = elliptic1(6, X_SIR(i,:));
 end
+
 %% First rotation
 A1 = my_SIR(5, N_L, ModelInfo.X_L', ModelInfo.y_L);
 O{count+1} = A1;

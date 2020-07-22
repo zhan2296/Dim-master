@@ -48,8 +48,8 @@ eta(nx,:) = eta(nx-1,:);  up(nx,:) = -up(nx-1,:);  vp(nx,:) = vp(nx-1,:);
 
 %Move the initial column of water around by changing io and jo. 
 %k will change the width of the column
-io=78;
-jo=15;
+io=10;
+jo=10;
 k=5;
 
 
